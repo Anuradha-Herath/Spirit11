@@ -1,9 +1,9 @@
+/* Import custom animations - must be at the top of the file */
+@import '../styles/animations.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Import custom animations */
-@import '../styles/animations.css';
 
 /* Additional global styles can be added below */
 body {
