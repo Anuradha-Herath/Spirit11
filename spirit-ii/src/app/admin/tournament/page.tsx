@@ -1,7 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { adminSocket, ADMIN_EVENTS } from "@/lib/admin-socket";
+import { UpdateTracker } from "@/utils/UpdateTracker";
+import UpdatedField from "@/components/admin/UpdatedField";
 
 // Mock tournament data for demonstration
 const TOURNAMENT_STATS = {
@@ -71,32 +74,176 @@ const UNIVERSITIES = [
 ];
 
 export default function TournamentSummaryPage() {
+  const [tournamentStats, setTournamentStats] = useState(TOURNAMENT_STATS);
+  const [playerStats, setPlayerStats] = useState(PLAYER_STATS);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const statsRef = useRef(tournamentStats);
+  const playersRef = useRef(playerStats);
+  const [updatedStatsFields, setUpdatedStatsFields] = useState<Set<string>>(new Set());
+  const updateTracker = useRef(new UpdateTracker<any>());
+  const [isLoading, setIsLoading] = useState(true);
+
   // Find top players
-  const highestRunScorer = [...PLAYER_STATS].sort((a, b) => (b.runs || 0) - (a.runs || 0))[0];
-  const highestWicketTaker = [...PLAYER_STATS].sort((a, b) => (b.wickets || 0) - (a.wickets || 0))[0];
+  const highestRunScorer = [...playerStats].sort((a, b) => (b.runs || 0) - (a.runs || 0))[0];
+  const highestWicketTaker = [...playerStats].sort((a, b) => (b.wickets || 0) - (a.wickets || 0))[0];
+  
+  useEffect(() => {
+    const fetchTournamentData = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Get auth token
+        const userData = localStorage.getItem("user");
+        let authHeader = '';
+        if (userData) {
+          const user = JSON.parse(userData);
+          authHeader = `Bearer ${user.username}`;
+        }
+        
+        // Call API to get tournament stats
+        const response = await fetch('/api/admin/tournament', {
+          headers: {
+            'Authorization': authHeader
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch tournament data');
+        }
+        
+        const data = await response.json();
+        setTournamentStats(data);
+        statsRef.current = data;
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error fetching tournament data:', error);
+        // Fallback to mock data
+        setTournamentStats(TOURNAMENT_STATS);
+        statsRef.current = TOURNAMENT_STATS;
+        setIsLoading(false);
+      }
+    };
+    
+    fetchTournamentData();
+    
+    // Connect to admin socket
+    adminSocket.connect();
+    
+    // Subscribe to stats updates
+    const statsUnsubscribe = adminSocket.subscribe(
+      ADMIN_EVENTS.STATS_UPDATED,
+      async (data) => {
+        setIsUpdating(true);
+        
+        // Update player stats
+        setTimeout(async () => {
+          try {
+            // Get current tournament stats
+            const currentStats = { ...statsRef.current };
+            
+            if (data.stats.runs) {
+              currentStats.total_runs += data.stats.runs;
+            }
+            if (data.stats.wickets) {
+              currentStats.total_wickets += data.stats.wickets;
+            }
+            
+            // Update the database via API
+            const userData = localStorage.getItem("user");
+            let authHeader = '';
+            if (userData) {
+              const user = JSON.parse(userData);
+              authHeader = `Bearer ${user.username}`;
+            }
+            
+            await fetch('/api/admin/tournament', {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': authHeader
+              },
+              body: JSON.stringify(currentStats)
+            });
+            
+            // Update refs and state
+            statsRef.current = currentStats;
+            setTournamentStats(currentStats);
+          } catch (error) {
+            console.error('Error updating tournament stats:', error);
+          }
+          
+          setIsUpdating(false);
+        }, 1000);
+      }
+    );
+    
+    // Subscribe to tournament updates
+    const tournamentUnsubscribe = adminSocket.subscribe(
+      ADMIN_EVENTS.TOURNAMENT_UPDATED,
+      (data) => {
+        setIsUpdating(true);
+        
+        setTimeout(() => {
+          const prevStats = { ...statsRef.current };
+          const updatedStats = { ...statsRef.current, ...data };
+          
+          // Track which fields were updated
+          const changedFields = updateTracker.current.trackChanges(updatedStats);
+          setUpdatedStatsFields(changedFields);
+          
+          // Update refs and state
+          statsRef.current = updatedStats;
+          setTournamentStats(updatedStats);
+          setIsUpdating(false);
+          
+          // Clear highlight after some time
+          setTimeout(() => {
+            setUpdatedStatsFields(new Set());
+          }, 3000);
+        }, 1000);
+      }
+    );
+    
+    // Clean up on unmount
+    return () => {
+      statsUnsubscribe();
+      tournamentUnsubscribe();
+    };
+  }, []);
 
   return (
     <div>
       <div className="bg-white shadow rounded-lg p-6">
         <h1 className="text-2xl font-bold text-gray-800 mb-6">Tournament Summary</h1>
         
+        {/* Show updating indicator */}
+        {isUpdating && (
+          <div className="bg-yellow-100 text-yellow-800 px-4 py-2 mb-4 text-sm flex items-center rounded-lg">
+            <svg className="animate-spin h-4 w-4 mr-2 text-yellow-800" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Updating tournament statistics in real-time...
+          </div>
+        )}
+        
         {/* Tournament Progress */}
         <div className="mb-8">
           <div className="flex justify-between items-center mb-2">
             <h2 className="text-lg font-semibold">Tournament Progress</h2>
             <span className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-              {TOURNAMENT_STATS.completed_percentage}% Complete
+              {tournamentStats.completed_percentage}% Complete
             </span>
           </div>
           <div className="bg-gray-200 rounded-full h-4">
             <div 
               className="bg-blue-600 h-4 rounded-full" 
-              style={{ width: `${TOURNAMENT_STATS.completed_percentage}%` }}
+              style={{ width: `${tournamentStats.completed_percentage}%` }}
             ></div>
           </div>
           <div className="mt-2 flex justify-between text-sm text-gray-500">
-            <span>Matches Played: {TOURNAMENT_STATS.total_matches}</span>
-            <span>Upcoming Matches: {TOURNAMENT_STATS.upcoming_matches}</span>
+            <span>Matches Played: {tournamentStats.total_matches}</span>
+            <span>Upcoming Matches: {tournamentStats.upcoming_matches}</span>
           </div>
         </div>
         
@@ -105,19 +252,29 @@ export default function TournamentSummaryPage() {
           <h2 className="text-lg font-semibold text-indigo-800 mb-4">Overall Statistics</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white rounded-lg p-4 shadow-sm text-center">
-              <div className="text-4xl font-bold text-indigo-600">{TOURNAMENT_STATS.total_runs}</div>
+              <UpdatedField
+                isUpdated={updatedStatsFields.has('total_runs')}
+                className="text-4xl font-bold text-indigo-600"
+              >
+                {tournamentStats.total_runs}
+              </UpdatedField>
               <div className="text-sm mt-1 text-gray-600">Total Runs</div>
             </div>
             <div className="bg-white rounded-lg p-4 shadow-sm text-center">
-              <div className="text-4xl font-bold text-indigo-600">{TOURNAMENT_STATS.total_wickets}</div>
+              <UpdatedField
+                isUpdated={updatedStatsFields.has('total_wickets')}
+                className="text-4xl font-bold text-indigo-600"
+              >
+                {tournamentStats.total_wickets}
+              </UpdatedField>
               <div className="text-sm mt-1 text-gray-600">Total Wickets</div>
             </div>
             <div className="bg-white rounded-lg p-4 shadow-sm text-center">
-              <div className="text-4xl font-bold text-indigo-600">{TOURNAMENT_STATS.average_runs_per_match}</div>
+              <div className="text-4xl font-bold text-indigo-600">{tournamentStats.average_runs_per_match}</div>
               <div className="text-sm mt-1 text-gray-600">Avg Runs/Match</div>
             </div>
             <div className="bg-white rounded-lg p-4 shadow-sm text-center">
-              <div className="text-4xl font-bold text-indigo-600">{TOURNAMENT_STATS.highest_score}</div>
+              <div className="text-4xl font-bold text-indigo-600">{tournamentStats.highest_score}</div>
               <div className="text-sm mt-1 text-gray-600">Highest Score</div>
             </div>
           </div>

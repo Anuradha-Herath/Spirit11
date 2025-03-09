@@ -1,44 +1,38 @@
-import { MongoClient } from 'mongodb';
+import { MongoClient, Db } from 'mongodb';
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://anuradhaanupamaherath:IZwWLlTR14eUUMMY@cluster0.wcqmx.mongodb.net/spiritii';
-// Hardcode the database name for now to avoid URL parsing issues
-const DB_NAME = 'spiritii';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/spiritii';
+const MONGODB_DB = process.env.MONGODB_DB || 'spiritii';
+
+interface MongoConnection {
+  client: MongoClient;
+  db: Db;
+}
 
 let cachedClient: MongoClient | null = null;
-let cachedDb: any = null;
+let cachedDb: Db | null = null;
 
-export async function connectToDatabase() {
-  // For debugging
-  console.log('Attempting to connect to MongoDB...');
-  try {
-    // If we have the connection cached, use it
-    if (cachedClient && cachedDb) {
-      console.log('Using cached database connection');
-      return { client: cachedClient, db: cachedDb };
-    }
-
-    // If no cached connection, create new connection
-    if (!MONGODB_URI) {
-      throw new Error('Please define the MONGODB_URI environment variable');
-    }
-
-    console.log('Creating new MongoDB client...');
-    const client = new MongoClient(MONGODB_URI);
-    
-    console.log('Connecting to MongoDB...');
-    await client.connect();
-    
-    console.log(`Connected to MongoDB, accessing database: ${DB_NAME}`);
-    const db = client.db(DB_NAME);
-
-    // Cache the connection
-    cachedClient = client;
-    cachedDb = db;
-
-    console.log('MongoDB connection successful');
-    return { client, db };
-  } catch (error) {
-    console.error('MongoDB connection error details:', error);
-    throw error;
+export async function connectToDatabase(): Promise<MongoConnection> {
+  // Check the cached client and database connection
+  if (cachedClient && cachedDb) {
+    // Load from cache if available
+    return {
+      client: cachedClient,
+      db: cachedDb,
+    };
   }
+
+  // Connect to the MongoDB server
+  const client = await MongoClient.connect(MONGODB_URI);
+
+  // Get reference to the database
+  const db = await client.db(MONGODB_DB);
+
+  // Cache the client and db references
+  cachedClient = client;
+  cachedDb = db;
+
+  return {
+    client,
+    db,
+  };
 }

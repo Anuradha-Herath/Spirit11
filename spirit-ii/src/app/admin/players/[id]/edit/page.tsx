@@ -145,12 +145,42 @@ export default function EditPlayerPage() {
   useEffect(() => {
     // Get player ID from URL params
     const playerId = params.id as string;
-
-    // Simulating API call with mock data
-    setTimeout(() => {
-      if (MOCK_PLAYERS_DETAILS[playerId as keyof typeof MOCK_PLAYERS_DETAILS]) {
-        const playerData = MOCK_PLAYERS_DETAILS[playerId as keyof typeof MOCK_PLAYERS_DETAILS];
-        setPlayer({...playerData});
+    
+    const fetchPlayer = async () => {
+      try {
+        setLoading(true);
+        
+        // Get auth token
+        const userData = localStorage.getItem("user");
+        let authHeader = '';
+        if (userData) {
+          const user = JSON.parse(userData);
+          authHeader = `Bearer ${user.username}`;
+        }
+        
+        console.log("Fetching player with ID:", playerId);
+        
+        // Call API to get player details
+        const response = await fetch(`/api/admin/players/${playerId}`, {
+          headers: {
+            'Authorization': authHeader
+          }
+        });
+        
+        if (!response.ok) {
+          console.error("API error:", response.status, response.statusText);
+          throw new Error(`Failed to fetch player: ${response.status}`);
+        }
+        
+        const playerData = await response.json();
+        console.log("Player data received:", playerData);
+        
+        // Ensure player has an id (some APIs might return _id from MongoDB)
+        if (playerData._id && !playerData.id) {
+          playerData.id = playerData._id.toString();
+        }
+        
+        setPlayer(playerData);
         
         // Calculate initial values
         const value = calculatePlayerValue(playerData);
@@ -159,11 +189,28 @@ export default function EditPlayerPage() {
         setCalculatedPoints(points);
         
         setLoading(false);
-      } else {
-        setError("Player not found");
+      } catch (error) {
+        console.error('Error fetching player:', error);
+        
+        // Fallback to mock data
+        console.log("Falling back to mock data");
+        if (MOCK_PLAYERS_DETAILS[playerId as keyof typeof MOCK_PLAYERS_DETAILS]) {
+          const playerData = MOCK_PLAYERS_DETAILS[playerId as keyof typeof MOCK_PLAYERS_DETAILS];
+          setPlayer({...playerData});
+          
+          // Calculate initial values
+          const value = calculatePlayerValue(playerData);
+          const points = calculatePlayerPoints(playerData);
+          setCalculatedValue(value);
+          setCalculatedPoints(points);
+        } else {
+          setError("Player not found");
+        }
         setLoading(false);
       }
-    }, 500);
+    };
+    
+    fetchPlayer();
   }, [params.id]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -196,24 +243,56 @@ export default function EditPlayerPage() {
     }, 100);
   };
 
-  const handleSave = () => {
-    // In a real app, this would call an API to save the player data
-    // For now, we'll simulate saving and redirect back to the player view
-    
-    // Update the budget based on the newly calculated value
-    const updatedPlayer = {
-      ...player,
-      budget: calculatedValue / 100000000 // Convert LKR to millions for display
-    };
-    
-    // Show success message
-    setSuccessMessage("Player updated successfully!");
-    
-    // In a real app, you would update the data in a database
-    // Here we just wait a moment to show the success message
-    setTimeout(() => {
-      router.push(`/admin/players/${player.id}`);
-    }, 1500);
+  const handleSave = async () => {
+    try {
+      setLoading(true);
+      
+      // Update the budget based on the newly calculated value
+      const updatedPlayer = {
+        ...player,
+        budget: calculatedValue / 100000000 // Convert LKR to millions for display
+      };
+      
+      // Get auth token
+      const userData = localStorage.getItem("user");
+      let authHeader = '';
+      if (userData) {
+        const user = JSON.parse(userData);
+        authHeader = `Bearer ${user.username}`;
+      }
+      
+      console.log("Updating player:", updatedPlayer);
+      
+      // Call API to update player
+      const response = await fetch(`/api/admin/players/${player.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': authHeader
+        },
+        body: JSON.stringify(updatedPlayer)
+      });
+      
+      if (!response.ok) {
+        console.error("API error:", response.status, response.statusText);
+        throw new Error(`Failed to update player: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log("Update result:", result);
+      
+      // Show success message
+      setSuccessMessage("Player updated successfully!");
+      
+      // Wait a moment then redirect back to player view
+      setTimeout(() => {
+        router.push(`/admin/players/${player.id}`);
+      }, 1500);
+    } catch (error) {
+      console.error('Error updating player:', error);
+      setSuccessMessage("Error updating player. Please try again.");
+      setLoading(false);
+    }
   };
 
   const handleCancel = () => {

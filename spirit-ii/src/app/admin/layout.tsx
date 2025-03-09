@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
+import AdminNotification from "@/components/admin/AdminNotification";
 
 // Admin users whitelist - in a real app, this would be in a database
 const ADMIN_USERS = ["spiritx_2025"];
@@ -98,6 +99,14 @@ export default function AdminLayout({
                   >
                     Tournament Summary
                   </Link>
+                  <Link 
+                    href="/admin/test-updates" 
+                    className={`px-3 py-2 rounded-md text-sm font-medium ${
+                      pathname === "/admin/test-updates" ? "bg-indigo-900 text-white" : "text-white hover:bg-indigo-800"
+                    }`}
+                  >
+                    Test Updates
+                  </Link>
                 </div>
               </div>
             </div>
@@ -141,12 +150,23 @@ export default function AdminLayout({
           >
             Tournament Summary
           </Link>
+          <Link 
+            href="/admin/test-updates" 
+            className={`px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap ${
+              pathname === "/admin/test-updates" ? "bg-indigo-900 text-white" : "text-white hover:bg-indigo-800"
+            }`}
+          >
+            Test Updates
+          </Link>
         </div>
       </div>
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         {children}
       </main>
+      
+      {/* Real-time notification component */}
+      <AdminNotification />
     </div>
   );
 }

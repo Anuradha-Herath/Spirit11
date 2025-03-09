@@ -91,6 +91,55 @@ export default function AdminPlayersPage() {
     economy: 0
   });
   const [successMessage, setSuccessMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch players from API
+  useEffect(() => {
+    const fetchPlayers = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Get auth token from localStorage - in a real app, use a proper auth system
+        const userData = localStorage.getItem("user");
+        let authHeader = '';
+        if (userData) {
+          const user = JSON.parse(userData);
+          authHeader = `Bearer ${user.username}`; // This is just a simple mock auth header
+        }
+        
+        // Try to fetch from the API route
+        try {
+          console.log('Fetching players from API...');
+          const response = await fetch('/api/admin/players', {
+            headers: {
+              'Authorization': authHeader
+            }
+          });
+          
+          if (!response.ok) {
+            console.error('API response not OK:', response.status, response.statusText);
+            throw new Error(`Failed to fetch players: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          console.log('API request successful, players:', data.length);
+          setPlayers(data);
+          
+        } catch (apiError) {
+          console.error('API request failed:', apiError);
+          throw apiError; // Re-throw to trigger fallback
+        }
+      } catch (error) {
+        console.warn('Falling back to mock data due to error:', error);
+        // Fallback to mock data if API is not available
+        setPlayers(MOCK_PLAYERS);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchPlayers();
+  }, []);
 
   // Filter and sort players
   const filteredAndSortedPlayers = [...players]
@@ -129,47 +178,102 @@ export default function AdminPlayersPage() {
     });
   };
 
-  const handleCreatePlayer = () => {
-    // Generate an ID for the new player (in a real app this would be handled by the backend)
-    const newId = String(Math.max(...players.map(p => parseInt(p.id))) + 1);
-    
-    // Calculate value based on stats
-    const playerValue = calculatePlayerValue(newPlayer);
-    
-    const createdPlayer = {
-      ...newPlayer,
-      id: newId,
-      budget: playerValue / 100000000 // Convert to millions for consistency
-    };
-    
-    setPlayers([...players, createdPlayer]);
-    setNewPlayer({
-      name: "",
-      university: "",
-      role: "Batsman",
-      image: "https://via.placeholder.com/150",
-      matches: 0,
-      runs: 0,
-      wickets: 0,
-      batting_average: 0,
-      batting_strike_rate: 0,
-      bowling_average: 0,
-      economy: 0
-    });
-    setShowCreateModal(false);
-    
-    // Show success message
-    setSuccessMessage("Player created successfully!");
-    setTimeout(() => setSuccessMessage(""), 3000);
-  };
-
-  const handleDeletePlayer = (playerId: string) => {
-    if (window.confirm("Are you sure you want to delete this player?")) {
-      setPlayers(players.filter(player => player.id !== playerId));
+  const handleCreatePlayer = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Get auth token
+      const userData = localStorage.getItem("user");
+      let authHeader = '';
+      if (userData) {
+        const user = JSON.parse(userData);
+        authHeader = `Bearer ${user.username}`;
+      }
+      
+      // Call API to create player
+      const response = await fetch('/api/admin/players', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': authHeader
+        },
+        body: JSON.stringify(newPlayer)
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to create player');
+      }
+      
+      const createdPlayer = await response.json();
+      
+      // Update state with new player
+      setPlayers([...players, createdPlayer]);
+      
+      // Reset form
+      setNewPlayer({
+        name: "",
+        university: "",
+        role: "Batsman",
+        image: "https://via.placeholder.com/150",
+        matches: 0,
+        runs: 0,
+        wickets: 0,
+        batting_average: 0,
+        batting_strike_rate: 0,
+        bowling_average: 0,
+        economy: 0
+      });
+      
+      setShowCreateModal(false);
       
       // Show success message
-      setSuccessMessage("Player deleted successfully!");
+      setSuccessMessage("Player created successfully!");
       setTimeout(() => setSuccessMessage(""), 3000);
+    } catch (error) {
+      console.error('Error creating player:', error);
+      setSuccessMessage("Error creating player. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeletePlayer = async (playerId: string) => {
+    if (window.confirm("Are you sure you want to delete this player?")) {
+      try {
+        setIsLoading(true);
+        
+        // Get auth token
+        const userData = localStorage.getItem("user");
+        let authHeader = '';
+        if (userData) {
+          const user = JSON.parse(userData);
+          authHeader = `Bearer ${user.username}`;
+        }
+        
+        // Call API to delete player
+        const response = await fetch(`/api/admin/players/${playerId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': authHeader
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to delete player');
+        }
+        
+        // Update state by removing the deleted player
+        setPlayers(players.filter(player => player.id !== playerId));
+        
+        // Show success message
+        setSuccessMessage("Player deleted successfully!");
+        setTimeout(() => setSuccessMessage(""), 3000);
+      } catch (error) {
+        console.error('Error deleting player:', error);
+        setSuccessMessage("Error deleting player. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 

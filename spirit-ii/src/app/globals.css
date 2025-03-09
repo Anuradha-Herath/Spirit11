@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import custom animations */
+@import '../styles/animations.css';
+
 /* Additional global styles can be added below */
 body {
   @apply bg-gray-50;
@@ -56,6 +59,19 @@ body {
 
 .animate-pulse {
   animation: pulse 1s ease-in-out 3;
+}
+
+/* Utility animation classes */
+.animate-fade-in-out {
+  animation: fade-in-out 3s ease;
+}
+
+.animate-highlight {
+  animation: highlight-update 2s ease;
+}
+
+.animate-pulse-once {
+  animation: pulse-update 1s ease;
 }
 
 /* Responsive table styles */
