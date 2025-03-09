@@ -2,29 +2,20 @@ import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 
-// Define player interface
+// Define player interface with only required fields
 interface Player {
   id?: string;
   _id?: string | ObjectId;
   name: string;
   university: string;
-  role: string;
-  budget?: number;
+  category: string; // Changed from "role"
   image?: string;
-  age?: number;
-  matches?: number;
-  runs?: number;
+  total_runs?: number;
+  balls_faced?: number;
+  innings_played?: number;
   wickets?: number;
-  batting_average?: number;
-  batting_strike_rate?: number;
-  high_score?: number;
-  centuries?: number;
-  fifties?: number;
-  bowling_average?: number;
-  economy?: number;
-  stumping?: number;
-  catches?: number;
-  bio?: string;
+  overs_bowled?: number;
+  runs_conceded?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -83,7 +74,7 @@ export async function POST(req: Request) {
     const playerData: Player = await req.json();
     
     // Validate required fields
-    if (!playerData.name || !playerData.university || !playerData.role) {
+    if (!playerData.name || !playerData.university || !playerData.category) {
       return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
     }
 
@@ -117,22 +108,27 @@ function getMockPlayers() {
       id: "1",
       name: "Kasun Perera",
       university: "University of Moratuwa",
-      role: "Batsman",
+      category: "Batsman",  // Changed from "role"
       image: "https://via.placeholder.com/150",
-      matches: 24,
-      runs: 1200,
+      total_runs: 1200,
+      balls_faced: 950,
+      innings_played: 24,
       wickets: 0,
+      overs_bowled: 0,
+      runs_conceded: 0
     },
     {
       id: "2",
       name: "Amal Silva",
       university: "University of Colombo",
-      role: "Bowler",
+      category: "Bowler",  // Changed from "role"
       image: "https://via.placeholder.com/150",
-      matches: 20,
-      runs: 120,
+      total_runs: 120,
+      balls_faced: 200,
+      innings_played: 20,
       wickets: 45,
-    },
-    // Add the other mock players here
+      overs_bowled: 180,
+      runs_conceded: 890
+    }
   ];
 }

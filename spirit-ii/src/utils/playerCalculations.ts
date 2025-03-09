@@ -1,6 +1,5 @@
 /**
- * Calculate player value in LKR based on stats
- * The formula takes into account multiple factors relevant to the player's role
+ * Calculate player value in LKR based on simplified stats
  */
 export function calculatePlayerValue(player: any): number {
   try {
@@ -17,52 +16,56 @@ export function calculatePlayerValue(player: any): number {
 }
 
 /**
- * Calculate player points based on stats and role
- * Using the formula:
- * Points = ((Batting_Strike_Rate / 5) + ((Batting_Average * 0.8) / 5)) + ((500 / Bowling_Strike_Rate) + (140 / Economy_Rate))
+ * Calculate player points based on simplified stats and category
  */
 export function calculatePlayerPoints(player: any): number {
   // Default values to prevent NaN or infinity results
   let points = 0;
   
   try {
-    // Calculate batting metrics
-    // Note: Using innings_played if available, fallback to matches
-    const inningsPlayed = player.innings_played || player.matches || 1;
-    const ballsFaced = player.balls_faced || (player.runs * 0.7) || 1; // Estimate balls if not available
+    // Batting points calculation with new field names
+    const inningsPlayed = player.innings_played || 1;
+    const ballsFaced = player.balls_faced || 1;
     
-    const batting_strike_rate = (player.runs / ballsFaced) * 100;
-    const batting_average = player.runs / inningsPlayed;
+    // Basic batting points based on strike rate (runs / balls * 100)
+    const battingPoints = (player.total_runs || 0) / inningsPlayed * 2;
     
-    // Calculate bowling metrics
-    const wickets = player.wickets || 0.1; // Avoid division by zero
-    const balls_bowled = player.balls_bowled || (player.wickets * 24) || 1; // Estimate balls if not available
-    const runs_conceded = player.runs_conceded || (player.wickets * 20) || 1; // Estimate runs if not available
+    // Bowling points calculation
+    const oversBowled = player.overs_bowled || 0;
+    const runsConceded = player.runs_conceded || 0;
+    const wickets = player.wickets || 0;
     
-    const bowling_strike_rate = balls_bowled / wickets;
-    const economy_rate = (runs_conceded / balls_bowled) * 6;
+    // Basic bowling points
+    const bowlingPoints = wickets * 10;
     
-    // Calculate total points using the formula
-    const battingPoints = (batting_strike_rate / 5) + ((batting_average * 0.8) / 5);
-    const bowlingPoints = (500 / bowling_strike_rate) + (140 / economy_rate);
-    
-    points = battingPoints + bowlingPoints;
-    
-    // Apply role-specific adjustments
-    if (player.role === 'Batsman') {
-      points = points * 1.2; // 20% bonus for specialist batsmen
-    } else if (player.role === 'Bowler') {
-      points = points * 1.2; // 20% bonus for specialist bowlers
-    } else if (player.role === 'Wicket Keeper') {
-      // Add points for keeping stats if available
-      const keepingPoints = ((player.stumping || 0) * 2) + ((player.catches || 0) * 1);
-      points += keepingPoints;
+    // Economy based points (if applicable)
+    let economyPoints = 0;
+    if (oversBowled > 0) {
+      const economy = runsConceded / oversBowled;
+      economyPoints = Math.max(0, 10 - economy) * 2;
     }
     
-    // Make sure points are non-negative
-    return Math.max(0, points);
+    // Calculate final points based on player category
+    switch (player.category || player.role) {
+      case "Batsman":
+        points = battingPoints * 1.2 + bowlingPoints * 0.3;
+        break;
+      case "Bowler":
+        points = battingPoints * 0.3 + bowlingPoints * 1.5 + economyPoints;
+        break;
+      case "All-rounder":
+        points = battingPoints * 0.8 + bowlingPoints * 0.8 + economyPoints * 0.8;
+        break;
+      case "Wicket Keeper":
+        points = battingPoints * 1.1 + bowlingPoints * 0.2;
+        break;
+      default:
+        points = battingPoints + bowlingPoints;
+    }
+    
+    return Math.round(points);
   } catch (error) {
     console.error("Error calculating player points:", error);
-    return 0;
+    return 10; // Default points
   }
 }

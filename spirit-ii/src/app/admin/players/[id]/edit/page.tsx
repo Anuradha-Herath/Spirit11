@@ -3,132 +3,96 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { calculatePlayerValue, calculatePlayerPoints } from "@/utils/playerCalculations";
-import Link from "next/link";
+import ImageUploader from "@/components/admin/ImageUploader";
 
-// Using the same mock data from the player stats page
+// Available categories for players
+const PLAYER_CATEGORIES = ["Batsman", "Bowler", "All-rounder", "Wicket Keeper"];
+
+// Use the same mock data structure with the new field names
 const MOCK_PLAYERS_DETAILS = {
-  // ...existing code from player stats page...
   "1": {
     id: "1",
     name: "Kasun Perera",
     university: "University of Moratuwa",
-    role: "Batsman",
+    category: "Batsman",  // Changed from "role"
     budget: 10.5,
     image: "https://via.placeholder.com/300",
-    age: 23,
-    matches: 24,
-    runs: 1200,
-    batting_average: 45.5,
-    batting_strike_rate: 135.8,
-    high_score: 98,
-    centuries: 0,
-    fifties: 12,
+    total_runs: 1200,
+    balls_faced: 950,
+    innings_played: 24,
     wickets: 0,
-    bowling_average: null,
-    economy: null,
-    bio: "Kasun is a talented top-order batsman known for his elegant stroke play and ability to play long innings."
+    overs_bowled: 0,
+    runs_conceded: 0
   },
   "2": {
     id: "2",
     name: "Amal Silva",
     university: "University of Colombo",
-    role: "Bowler",
+    category: "Bowler",
     budget: 9.2,
     image: "https://via.placeholder.com/300",
-    age: 22,
-    matches: 20,
-    runs: 120,
-    batting_average: 12.3,
-    batting_strike_rate: 85.6,
-    high_score: 22,
-    centuries: 0,
-    fifties: 0,
+    total_runs: 120,
+    balls_faced: 140,
+    innings_played: 20,
     wickets: 45,
-    bowling_average: 21.5,
-    economy: 4.2,
-    bio: "Amal is a right-arm fast bowler known for his ability to swing the ball both ways."
+    overs_bowled: 180,
+    runs_conceded: 756
   },
   "3": {
     id: "3",
     name: "Nuwan Pradeep",
     university: "University of Peradeniya",
-    role: "All-rounder",
+    category: "All-rounder",
     budget: 11.0,
     image: "https://via.placeholder.com/300",
-    age: 24,
-    matches: 18,
-    runs: 450,
-    batting_average: 32.1,
-    batting_strike_rate: 110.3,
-    high_score: 75,
-    centuries: 0,
-    fifties: 3,
+    total_runs: 450,
+    balls_faced: 410,
+    innings_played: 18,
     wickets: 30,
-    bowling_average: 25.8,
-    economy: 5.1,
-    bio: "Nuwan is a versatile all-rounder who can contribute in all departments of the game."
+    overs_bowled: 150,
+    runs_conceded: 770
   },
   "4": {
     id: "4",
     name: "Dinesh Chandimal",
     university: "University of Moratuwa",
-    role: "Wicket Keeper",
+    category: "Wicket Keeper",
     budget: 9.8,
     image: "https://via.placeholder.com/300",
-    age: 23,
-    matches: 22,
-    runs: 780,
-    batting_average: 38.7,
-    batting_strike_rate: 125.2,
-    high_score: 87,
-    centuries: 0,
-    fifties: 6,
+    total_runs: 780,
+    balls_faced: 620,
+    innings_played: 22,
     wickets: 0,
-    bowling_average: null,
-    economy: null,
-    stumping: 25,
-    catches: 32,
-    bio: "Dinesh is an agile wicket-keeper with quick reflexes and good game awareness."
+    overs_bowled: 0,
+    runs_conceded: 0
   },
   "5": {
     id: "5",
     name: "Lahiru Kumara",
     university: "University of Colombo",
-    role: "Bowler",
+    category: "Bowler",
     budget: 8.5,
     image: "https://via.placeholder.com/300",
-    age: 22,
-    matches: 16,
-    runs: 60,
-    batting_average: 8.4,
-    batting_strike_rate: 75.2,
-    high_score: 18,
-    centuries: 0,
-    fifties: 0,
+    total_runs: 60,
+    balls_faced: 80,
+    innings_played: 16,
     wickets: 38,
-    bowling_average: 19.3,
-    economy: 3.8,
-    bio: "Lahiru is a skilled spinner who can turn the ball sharply."
+    overs_bowled: 160,
+    runs_conceded: 608
   },
   "6": {
     id: "6",
     name: "Kusal Mendis",
     university: "University of Kelaniya",
-    role: "Batsman",
+    category: "Batsman",
     budget: 10.2,
     image: "https://via.placeholder.com/300",
-    age: 24,
-    matches: 25,
-    runs: 1150,
-    batting_average: 42.8,
-    batting_strike_rate: 140.2,
-    high_score: 105,
-    centuries: 1,
-    fifties: 9,
+    total_runs: 1150,
+    balls_faced: 820,
+    innings_played: 25,
     wickets: 0,
-    bowling_average: null,
-    economy: null,
-    bio: "Kusal is an explosive opening batsman who can set the tone for the innings."
+    overs_bowled: 0,
+    runs_conceded: 0
   }
 };
 
@@ -217,8 +181,7 @@ export default function EditPlayerPage() {
     const { name, value } = e.target;
     
     // Handle numeric fields
-    const numericFields = ['age', 'matches', 'runs', 'wickets', 'batting_average', 'batting_strike_rate', 
-      'high_score', 'centuries', 'fifties', 'bowling_average', 'economy', 'stumping', 'catches'];
+    const numericFields = ['total_runs', 'balls_faced', 'innings_played', 'wickets', 'overs_bowled', 'runs_conceded'];
     
     const updatedValue = numericFields.includes(name) ? 
       (value === '' ? null : Number(value)) : 
@@ -241,6 +204,25 @@ export default function EditPlayerPage() {
       setCalculatedValue(value);
       setCalculatedPoints(points);
     }, 100);
+  };
+
+  // Add handler for image uploads
+  const handleImageUploaded = (url: string) => {
+    setPlayer({
+      ...player,
+      image: url
+    });
+    
+    // Recalculate value and points
+    const updatedPlayer = {
+      ...player,
+      image: url
+    };
+    
+    const value = calculatePlayerValue(updatedPlayer);
+    const points = calculatePlayerPoints(updatedPlayer);
+    setCalculatedValue(value);
+    setCalculatedPoints(points);
   };
 
   const handleSave = async () => {
@@ -355,21 +337,12 @@ export default function EditPlayerPage() {
           {/* Left Column - Basic Info & Image */}
           <div>
             <div className="mb-6">
-              <img 
-                src={player.image} 
-                alt={player.name}
-                className="w-full h-auto rounded-lg" 
+              {/* Replace the static image with ImageUploader */}
+              <label className="block text-sm font-medium text-gray-700 mb-2">Player Image</label>
+              <ImageUploader
+                initialImage={player.image}
+                onImageUpload={handleImageUploaded}
               />
-              <div className="mt-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
-                <input
-                  type="text"
-                  name="image"
-                  value={player.image}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                />
-              </div>
             </div>
             
             <div className="space-y-4">
@@ -396,42 +369,17 @@ export default function EditPlayerPage() {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
                 <select
-                  name="role"
-                  value={player.role}
+                  name="category"
+                  value={player.category}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 >
-                  <option value="Batsman">Batsman</option>
-                  <option value="Bowler">Bowler</option>
-                  <option value="All-rounder">All-rounder</option>
-                  <option value="Wicket Keeper">Wicket Keeper</option>
+                  {PLAYER_CATEGORIES.map((category) => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
                 </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Age</label>
-                <input
-                  type="number"
-                  name="age"
-                  value={player.age || ''}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  min="16"
-                  max="40"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
-                <textarea
-                  name="bio"
-                  value={player.bio}
-                  onChange={handleInputChange}
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                />
               </div>
             </div>
             
@@ -454,91 +402,38 @@ export default function EditPlayerPage() {
           
           {/* Right Column - Stats */}
           <div>
-            {/* Basic Stats */}
-            <div className="mb-6">
-              <h3 className="text-lg font-medium mb-4 border-b pb-1">Basic Statistics</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Matches Played</label>
-                  <input
-                    type="number"
-                    name="matches"
-                    value={player.matches || ''}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    min="0"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">High Score</label>
-                  <input
-                    type="number"
-                    name="high_score"
-                    value={player.high_score || ''}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    min="0"
-                  />
-                </div>
-              </div>
-            </div>
-            
             {/* Batting Stats */}
             <div className="mb-6">
               <h3 className="text-lg font-medium mb-4 border-b pb-1">Batting Statistics</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Runs</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Total Runs</label>
                   <input
                     type="number"
-                    name="runs"
-                    value={player.runs || ''}
+                    name="total_runs"
+                    value={player.total_runs || ''}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                     min="0"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Batting Average</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Balls Faced</label>
                   <input
                     type="number"
-                    name="batting_average"
-                    value={player.batting_average || ''}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    min="0"
-                    step="0.01"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Strike Rate</label>
-                  <input
-                    type="number"
-                    name="batting_strike_rate"
-                    value={player.batting_strike_rate || ''}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    min="0"
-                    step="0.01"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Centuries</label>
-                  <input
-                    type="number"
-                    name="centuries"
-                    value={player.centuries || ''}
+                    name="balls_faced"
+                    value={player.balls_faced || ''}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                     min="0"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Fifties</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Innings Played</label>
                   <input
                     type="number"
-                    name="fifties"
-                    value={player.fifties || ''}
+                    name="innings_played"
+                    value={player.innings_played || ''}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                     min="0"
@@ -563,62 +458,30 @@ export default function EditPlayerPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Bowling Average</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Overs Bowled</label>
                   <input
                     type="number"
-                    name="bowling_average"
-                    value={player.bowling_average || ''}
+                    name="overs_bowled"
+                    value={player.overs_bowled || ''}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                     min="0"
-                    step="0.01"
+                    step="0.1"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Economy Rate</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Runs Conceded</label>
                   <input
                     type="number"
-                    name="economy"
-                    value={player.economy || ''}
+                    name="runs_conceded"
+                    value={player.runs_conceded || ''}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                     min="0"
-                    step="0.01"
                   />
                 </div>
               </div>
             </div>
-            
-            {/* Wicket-keeping Stats */}
-            {player.role === 'Wicket Keeper' && (
-              <div>
-                <h3 className="text-lg font-medium mb-4 border-b pb-1">Wicket-Keeping Statistics</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Catches</label>
-                    <input
-                      type="number"
-                      name="catches"
-                      value={player.catches || ''}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                      min="0"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Stumpings</label>
-                    <input
-                      type="number"
-                      name="stumping"
-                      value={player.stumping || ''}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                      min="0"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
         

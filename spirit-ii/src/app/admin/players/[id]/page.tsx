@@ -287,7 +287,11 @@ export default function PlayerStatsPage() {
   };
   
   const handleEditClick = () => {
-    router.push(`/admin/players/${player.id}/edit`);
+    // Explicitly construct the edit URL path using the player ID
+    const playerId = params.id;
+    const editPath = `/admin/players/${playerId}/edit`;
+    console.log(`Navigating to edit page: ${editPath}`);
+    router.push(editPath);
   };
 
   if (loading) {

@@ -278,7 +278,7 @@ export default function AdminPlayersPage() {
   };
 
   return (
-    <div>
+    <div className="space-y-6">
       {/* Success Message */}
       {successMessage && (
         <div className="fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-md shadow-md animate-fade-in-out">
@@ -466,12 +466,15 @@ export default function AdminPlayersPage() {
       <div className="bg-white shadow rounded-lg p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-800">Players Management</h1>
-          <button 
-            onClick={() => setShowCreateModal(true)}
-            className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+          <Link 
+            href="/admin/players/new"
+            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center"
           >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+            </svg>
             Add Player
-          </button>
+          </Link>
         </div>
         
         {/* Search and filter controls */}
