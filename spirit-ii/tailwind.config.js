@@ -6,7 +6,17 @@ module.exports = {
     './components/**/*.{js,ts,jsx,tsx}',
   ],
   theme: {
-    extend: {},
+    extend: {
+      animation: {
+        'fade-in': 'fadeIn 0.3s ease-out forwards',
+        'fade-out': 'fadeOut 0.3s ease-in forwards',
+        'fade-in-out': 'fadeIn 0.3s ease-out forwards, fadeOut 0.3s ease-in forwards 2.7s',
+      },
+      transitionProperty: {
+        'width': 'width',
+        'height': 'height',
+      }
+    },
   },
   plugins: [],
 }

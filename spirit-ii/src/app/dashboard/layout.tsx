@@ -11,6 +11,7 @@ export default function DashboardLayout({
 }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [teamCount, setTeamCount] = useState(0);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -21,9 +22,45 @@ export default function DashboardLayout({
       router.push("/login");
     } else {
       setIsAuthenticated(true);
+      
+      // Get team count for status display
+      const myTeam = localStorage.getItem("myTeam");
+      if (myTeam) {
+        try {
+          const team = JSON.parse(myTeam);
+          setTeamCount(team.length || 0);
+        } catch (e) {
+          console.error("Error parsing team data", e);
+        }
+      }
     }
     setIsLoading(false);
   }, [router]);
+
+  // Update team count when it changes in localStorage
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const myTeam = localStorage.getItem("myTeam");
+      if (myTeam) {
+        try {
+          const team = JSON.parse(myTeam);
+          setTeamCount(team.length || 0);
+        } catch (e) {
+          console.error("Error parsing team data", e);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Custom event for when team changes within the same window
+    window.addEventListener('teamUpdated', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('teamUpdated', handleStorageChange);
+    };
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("user");
@@ -87,10 +124,29 @@ export default function DashboardLayout({
                   >
                     My Team
                   </Link>
+                  <Link 
+                    href="/dashboard/budget" 
+                    className={`px-3 py-2 rounded-md text-sm font-medium ${
+                      pathname === "/dashboard/budget" ? "bg-blue-700 text-white" : "text-white hover:bg-blue-500"
+                    }`}
+                  >
+                    Budget
+                  </Link>
+                  <Link 
+                    href="/dashboard/leaderboard" 
+                    className={`px-3 py-2 rounded-md text-sm font-medium ${
+                      pathname === "/dashboard/leaderboard" ? "bg-blue-700 text-white" : "text-white hover:bg-blue-500"
+                    }`}
+                  >
+                    Leaderboard
+                  </Link>
                 </div>
               </div>
             </div>
-            <div>
+            <div className="flex items-center space-x-4">
+              <div className="bg-blue-800 text-yellow-400 px-3 py-1 rounded-full text-xs font-medium hidden md:block">
+                Team: {teamCount}/11
+              </div>
               <button 
                 onClick={handleLogout}
                 className="bg-red-500 text-white px-4 py-2 rounded text-sm hover:bg-red-600"
@@ -127,7 +183,7 @@ export default function DashboardLayout({
               pathname.startsWith("/dashboard/select-team") ? "bg-blue-700 text-white" : "text-white hover:bg-blue-600"
             }`}
           >
-            Select Team
+            Select
           </Link>
           <Link 
             href="/dashboard/team" 
@@ -135,8 +191,29 @@ export default function DashboardLayout({
               pathname === "/dashboard/team" ? "bg-blue-700 text-white" : "text-white hover:bg-blue-600"
             }`}
           >
-            My Team
+            Team
           </Link>
+          <Link 
+            href="/dashboard/budget" 
+            className={`px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap ${
+              pathname === "/dashboard/budget" ? "bg-blue-700 text-white" : "text-white hover:bg-blue-600"
+            }`}
+          >
+            Budget
+          </Link>
+          <Link 
+            href="/dashboard/leaderboard" 
+            className={`px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap ${
+              pathname === "/dashboard/leaderboard" ? "bg-blue-700 text-white" : "text-white hover:bg-blue-600"
+            }`}
+          >
+            Leaderboard
+          </Link>
+        </div>
+        <div className="flex justify-center mt-2">
+          <div className="bg-blue-800 text-yellow-400 px-3 py-1 rounded-full text-xs font-medium">
+            Team: {teamCount}/11
+          </div>
         </div>
       </div>
 

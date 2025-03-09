@@ -1,9 +1,10 @@
 import React from 'react';
 import './globals.css';
+import { TeamProvider } from '@/contexts/TeamContext';
 
 export const metadata = {
   title: 'Spirit II',
-  description: 'Spirit II application',
+  description: 'Spirit II Fantasy Cricket Application',
 };
 
 export default function RootLayout({
@@ -14,7 +15,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body suppressHydrationWarning>
-        {children}
+        <TeamProvider>
+          {children}
+        </TeamProvider>
       </body>
     </html>
   );

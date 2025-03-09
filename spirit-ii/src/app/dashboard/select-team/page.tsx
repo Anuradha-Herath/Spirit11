@@ -2,6 +2,18 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useTeam, INITIAL_BUDGET_LKR } from '@/contexts/TeamContext';
+import { eventService, EVENTS } from '@/lib/event-service';
+
+// Format number to display with commas
+const formatNumber = (num: number) => {
+  return new Intl.NumberFormat('en-LK').format(num);
+};
+
+// Convert budget from millions to LKR
+const convertToLKR = (budgetInMillions: number) => {
+  return budgetInMillions * 100000000; // 1M USD = 100M LKR (simplified for this example)
+};
 
 // Player categories for selection
 const PLAYER_CATEGORIES = [
@@ -11,7 +23,7 @@ const PLAYER_CATEGORIES = [
   { id: "wicket-keeper", name: "Wicket Keepers", description: "Pick a reliable wicket keeper" }
 ];
 
-// Mock players data grouped by category
+// Mock players data with budgets in millions (to be converted to LKR)
 const PLAYERS_BY_CATEGORY = {
   "batsman": [
     {
@@ -128,45 +140,47 @@ const PLAYERS_BY_CATEGORY = {
 };
 
 export default function SelectTeamPage() {
+  const { team, remainingBudget, addPlayer } = useTeam();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [myTeam, setMyTeam] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   
-  // Load existing team from localStorage
-  useEffect(() => {
-    const savedTeam = localStorage.getItem("myTeam");
-    if (savedTeam) {
-      try {
-        setMyTeam(JSON.parse(savedTeam));
-      } catch (e) {
-        console.error("Error loading saved team", e);
-      }
-    }
-  }, []);
-
-  // Save team to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem("myTeam", JSON.stringify(myTeam));
-  }, [myTeam]);
+  // Show notification and auto-hide after 3 seconds
+  const showNotification = (message: string, type: 'success' | 'error') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 3000);
+  };
 
   const handleAddPlayer = (player: any) => {
     // Check if player is already in the team
-    const isPlayerInTeam = myTeam.some(p => p.id === player.id);
-    
-    if (isPlayerInTeam) {
-      alert(`${player.name} is already in your team.`);
+    if (team.some(p => p.id === player.id)) {
+      showNotification(`${player.name} is already in your team.`, 'error');
       return;
     }
     
-    // Check if team size limit reached (11 players)
-    if (myTeam.length >= 11) {
-      alert("You cannot add more than 11 players to your team.");
+    // Check if team size limit reached
+    if (team.length >= 11) {
+      showNotification("You cannot add more than 11 players to your team.", 'error');
       return;
     }
     
-    // Add player to team
-    setMyTeam([...myTeam, player]);
-    alert(`${player.name} added to your team!`);
+    // Check budget and add player using the context
+    const playerBudgetLkr = convertToLKR(player.budget);
+    if (playerBudgetLkr > remainingBudget) {
+      showNotification(
+        `Cannot afford ${player.name}. Required: Rs. ${formatNumber(playerBudgetLkr)}`,
+        'error'
+      );
+      return;
+    }
+    
+    const success = addPlayer(player);
+    if (success) {
+      showNotification(`${player.name} added to your team!`, 'success');
+      
+      // Publish player-specific update for real-time reflection
+      eventService.publish(EVENTS.PLAYER_STATS_UPDATED, { playerId: player.id });
+    }
   };
 
   const filteredPlayers = selectedCategory 
@@ -177,28 +191,45 @@ export default function SelectTeamPage() {
     : [];
 
   return (
-    <div>
+    <div className="relative">
+      {/* Notification toast */}
+      {notification && (
+        <div className={`fixed top-4 right-4 z-50 px-4 py-2 rounded-lg shadow-lg ${
+          notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'
+        } text-white animate-fade-in-out`}>
+          {notification.message}
+        </div>
+      )}
+      
       <h1 className="text-2xl font-bold mb-2">Select Your Team</h1>
       <p className="text-gray-600 mb-6">Choose players from each category to build your dream team.</p>
       
-      {/* Team summary bar */}
-      <div className="bg-blue-50 p-4 rounded-lg mb-6 border border-blue-100 flex flex-wrap justify-between items-center">
-        <div>
-          <h3 className="font-bold">Your Team: {myTeam.length}/11 players selected</h3>
-          <p className="text-sm text-gray-600">
-            {myTeam.length === 11 
-              ? "Team complete! Go to My Team to view details."
-              : `Add ${11 - myTeam.length} more players to complete your team.`}
-          </p>
+      {/* Budget and Team summary bar */}
+      <div className="bg-blue-50 p-4 rounded-lg mb-6 border border-blue-100">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
+          <div>
+            <h3 className="font-bold mb-1">Your Team: {team.length}/11 players selected</h3>
+            <p className="text-sm text-gray-600">
+              {team.length === 11 
+                ? "Team complete! Go to My Team to view details."
+                : `Add ${11 - team.length} more players to complete your team.`}
+            </p>
+          </div>
+          <div className="mt-3 md:mt-0 flex flex-col items-end">
+            <div className="text-lg font-bold text-green-700">Budget: Rs. {formatNumber(remainingBudget)}</div>
+            <p className="text-sm text-gray-600">Initial: Rs. {formatNumber(INITIAL_BUDGET_LKR)}</p>
+          </div>
         </div>
-        <Link href="/dashboard/team" className="mt-2 sm:mt-0 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm">
-          View My Team
-        </Link>
+        <div className="mt-4 flex justify-end">
+          <Link href="/dashboard/team" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm">
+            View My Team
+          </Link>
+        </div>
       </div>
       
       {!selectedCategory ? (
-        // Category selection cards
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        // Category selection cards - responsive grid
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           {PLAYER_CATEGORIES.map(category => (
             <div 
               key={category.id}
@@ -214,21 +245,21 @@ export default function SelectTeamPage() {
           ))}
         </div>
       ) : (
-        // Player selection interface
+        // Player selection interface with improved responsiveness
         <div>
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
             <h2 className="text-xl font-bold">
               {PLAYER_CATEGORIES.find(c => c.id === selectedCategory)?.name}
             </h2>
             <button 
               onClick={() => setSelectedCategory(null)}
-              className="text-blue-600 hover:text-blue-800"
+              className="text-blue-600 hover:text-blue-800 flex items-center"
             >
-              ← Back to Categories
+              <span className="mr-1">←</span> Back to Categories
             </button>
           </div>
           
-          {/* Search bar */}
+          {/* Search bar with improved responsiveness */}
           <div className="mb-6">
             <input
               type="text"
@@ -239,34 +270,43 @@ export default function SelectTeamPage() {
             />
           </div>
           
-          {/* Players list */}
-          <div className="grid gap-4">
+          {/* Players list with responsive design and LKR currency */}
+          <div className="space-y-4">
             {filteredPlayers.map(player => (
               <div key={player.id} className="bg-white rounded-md shadow flex flex-col sm:flex-row overflow-hidden">
-                <div className="sm:w-20 h-20 bg-gray-200 flex-shrink-0">
+                <div className="w-full sm:w-20 h-40 sm:h-auto bg-gray-200 flex-shrink-0">
                   <img 
                     src={player.image}
                     alt={player.name}
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <div className="p-4 flex-grow flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                <div className="p-4 flex-grow flex flex-col justify-between">
                   <div>
                     <h3 className="font-bold">{player.name}</h3>
                     <p className="text-gray-600 text-sm">{player.university}</p>
+                    <p className="text-gray-500 text-sm mt-1">{player.role}</p>
                   </div>
-                  <div className="mt-2 sm:mt-0 flex items-center gap-4">
-                    <span className="text-gray-800 font-medium">${player.budget}M</span>
+                  <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <span className={`font-medium ${convertToLKR(player.budget) > remainingBudget ? 'text-red-600' : 'text-gray-800'}`}>
+                      Rs. {formatNumber(convertToLKR(player.budget))}
+                    </span>
                     <button
                       onClick={() => handleAddPlayer(player)}
-                      disabled={myTeam.some(p => p.id === player.id)}
-                      className={`px-4 py-1 rounded text-sm font-medium ${
-                        myTeam.some(p => p.id === player.id)
+                      disabled={team.some(p => p.id === player.id) || convertToLKR(player.budget) > remainingBudget}
+                      className={`px-4 py-2 rounded text-sm font-medium ${
+                        team.some(p => p.id === player.id)
                           ? "bg-gray-300 text-gray-600 cursor-not-allowed"
+                          : convertToLKR(player.budget) > remainingBudget
+                          ? "bg-red-200 text-red-700 cursor-not-allowed"
                           : "bg-green-600 text-white hover:bg-green-700"
                       }`}
                     >
-                      {myTeam.some(p => p.id === player.id) ? "Added" : "Add to Team"}
+                      {team.some(p => p.id === player.id) 
+                        ? "Added" 
+                        : convertToLKR(player.budget) > remainingBudget 
+                        ? "Can't Afford" 
+                        : "Add to Team"}
                     </button>
                   </div>
                 </div>
