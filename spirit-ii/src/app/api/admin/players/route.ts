@@ -95,7 +95,8 @@ export async function POST(req: Request) {
     const collection = db.collection('players');
 
     // Insert player into database
-    const result = await collection.insertOne(playerData);
+    const playerDataToInsert = { ...playerData, _id: playerData._id ? new ObjectId(playerData._id) : undefined };
+    const result = await collection.insertOne(playerDataToInsert);
     const insertedId = result.insertedId.toString();
 
     return NextResponse.json({
