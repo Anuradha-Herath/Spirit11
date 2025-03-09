@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { calculatePlayerValue, calculatePlayerPoints } from "@/utils/playerCalculations";
 
 // Mock player detailed data
 const MOCK_PLAYERS_DETAILS = {
@@ -137,6 +138,8 @@ export default function PlayerStatsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("stats");
+  const [playerValue, setPlayerValue] = useState(0);
+  const [playerPoints, setPlayerPoints] = useState(0);
 
   useEffect(() => {
     // Get player ID from URL params
@@ -145,7 +148,15 @@ export default function PlayerStatsPage() {
     // Simulating API call with mock data
     setTimeout(() => {
       if (MOCK_PLAYERS_DETAILS[playerId as keyof typeof MOCK_PLAYERS_DETAILS]) {
-        setPlayer(MOCK_PLAYERS_DETAILS[playerId as keyof typeof MOCK_PLAYERS_DETAILS]);
+        const playerData = MOCK_PLAYERS_DETAILS[playerId as keyof typeof MOCK_PLAYERS_DETAILS];
+        setPlayer(playerData);
+        
+        // Calculate dynamic value and points
+        const value = calculatePlayerValue(playerData);
+        const points = calculatePlayerPoints(playerData);
+        setPlayerValue(value);
+        setPlayerPoints(points);
+        
         setLoading(false);
       } else {
         setError("Player not found");
@@ -156,6 +167,10 @@ export default function PlayerStatsPage() {
 
   const handleBackClick = () => {
     router.back();
+  };
+  
+  const handleEditClick = () => {
+    router.push(`/admin/players/${player.id}/edit`);
   };
 
   if (loading) {
@@ -195,6 +210,7 @@ export default function PlayerStatsPage() {
           </button>
           <h1 className="text-xl font-bold">{player.name}</h1>
           <button 
+            onClick={handleEditClick}
             className="bg-yellow-500 text-white px-4 py-1 rounded hover:bg-yellow-600"
           >
             Edit Player
@@ -236,6 +252,22 @@ export default function PlayerStatsPage() {
                 alt={player.name} 
                 className="w-full h-auto"
               />
+            </div>
+            
+            {/* Market value and points info box */}
+            <div className="mt-4 bg-gray-50 rounded-lg p-4 border border-gray-200">
+              <h3 className="text-lg font-medium mb-2">Player Value</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-sm text-gray-500">Market Value</div>
+                  <div className="text-xl font-bold text-green-600">Rs. {playerValue.toLocaleString()}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500">Fantasy Points</div>
+                  <div className="text-xl font-bold text-indigo-600">{playerPoints}</div>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">Values are calculated based on player performance.</p>
             </div>
           </div>
           <div className="md:w-2/3 md:pl-6">

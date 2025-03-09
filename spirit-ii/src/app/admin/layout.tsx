@@ -4,6 +4,9 @@ import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 
+// Admin users whitelist - in a real app, this would be in a database
+const ADMIN_USERS = ["spiritx_2025"];
+
 export default function AdminLayout({
   children,
 }: {
@@ -11,26 +14,30 @@ export default function AdminLayout({
 }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [username, setUsername] = useState("");
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    // In a real app, this would check if the current user has admin rights
-    // For demo purposes, we'll simulate an admin check
+    // Check if the current user has admin rights
     const checkAdminStatus = () => {
       const user = localStorage.getItem("user");
       if (!user) {
-        router.push("/login");
+        // Redirect to login page with return URL
+        router.push(`/login?returnUrl=${encodeURIComponent(pathname || '/admin')}`);
         return;
       }
       
       try {
         const userData = JSON.parse(user);
-        // Simulate admin check - in a real app, we would verify against server
-        // Here we'll just assume the demo user is an admin
-        if (userData.username === "spiritx_2025") {
+        setUsername(userData.username || "");
+        
+        // Check if user is in admin whitelist
+        if (ADMIN_USERS.includes(userData.username)) {
           setIsAdmin(true);
         } else {
+          // Not an admin, redirect to dashboard with message
+          localStorage.setItem("authError", "You don't have permission to access the admin panel");
           router.push("/dashboard");
         }
       } catch (e) {
@@ -42,7 +49,7 @@ export default function AdminLayout({
     };
     
     checkAdminStatus();
-  }, [router]);
+  }, [router, pathname]);
 
   const handleLogout = () => {
     localStorage.removeItem("user");
@@ -52,7 +59,7 @@ export default function AdminLayout({
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-purple-600 border-t-transparent"></div>
       </div>
     );
   }
@@ -95,6 +102,9 @@ export default function AdminLayout({
               </div>
             </div>
             <div className="flex items-center space-x-4">
+              <div className="text-white">
+                <span className="text-sm text-yellow-200">Admin:</span> {username}
+              </div>
               <Link 
                 href="/dashboard"
                 className="text-white hover:text-yellow-400 text-sm"
