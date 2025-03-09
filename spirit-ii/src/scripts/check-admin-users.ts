@@ -16,7 +16,7 @@ async function checkAdminUsers() {
     
     if (adminUsers.length > 0) {
       console.log('Admin users details:');
-      adminUsers.forEach((admin, index) => {
+      adminUsers.forEach((admin: any, index: number) => {
         const { password, ...adminWithoutPassword } = admin;
         console.log(`Admin #${index + 1}:`, adminWithoutPassword);
       });

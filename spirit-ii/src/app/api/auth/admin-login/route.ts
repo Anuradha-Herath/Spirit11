@@ -12,8 +12,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
     }
 
-    const { db } = await connectToDatabase();
-    const usersCollection = db.collection('users');
+    const usersCollection = db.collection('users') as Collection;
+    const usersCollection = db.collection('users') as mongoose.Collection;
     
     // Find user with username and check if they are an admin (case-insensitive)
     const user = await usersCollection.findOne({ 

@@ -7,16 +7,7 @@ if (!MONGODB_URI) {
 }
 
 // Global variable to prevent multiple connections
-interface MongooseCache {
-  conn: typeof mongoose | null;
-  promise: Promise<typeof mongoose> | null;
-}
-
-declare global {
-  var mongoose: MongooseCache;
-}
-
-let cached: MongooseCache = global.mongoose || { conn: null, promise: null };
+let cached = global.mongoose || { conn: null, promise: null };
 
 export async function connectToDatabase() {
   if (cached.conn) {
@@ -24,7 +15,10 @@ export async function connectToDatabase() {
   }
 
   if (!cached.promise) {
-    cached.promise = mongoose.connect(MONGODB_URI as string).then((mongoose) => mongoose);
+    cached.promise = mongoose.connect(MONGODB_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    }).then((mongoose) => mongoose);
   }
 
   cached.conn = await cached.promise;
