@@ -2,25 +2,18 @@
 
 import { useState, useEffect } from "react";
 
-// For demo purposes, we'll use mock data
-// In a real application, this would come from an API call to the server
-const MOCK_USERS = [
-  { username: "spiritx_2025", points: 754 },
-  { username: "cricket_master", points: 823 },
-  { username: "fantasy_king", points: 711 },
-  { username: "team_selector", points: 688 },
-  { username: "game_player", points: 645 },
-  { username: "runs_hunter", points: 912 },
-  { username: "pitch_expert", points: 876 },
-  { username: "boundary_hitter", points: 792 },
-  { username: "bowling_wizard", points: 834 },
-  { username: "wicket_taker", points: 745 }
-];
+// Define interface for leaderboard entries
+interface LeaderboardEntry {
+  username: string;
+  points: number;
+  rank?: number;
+}
 
 export default function LeaderboardPage() {
-  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [currentUser, setCurrentUser] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
     // Get current user from localStorage
@@ -29,48 +22,81 @@ export default function LeaderboardPage() {
       try {
         const user = JSON.parse(userData);
         setCurrentUser(user.username || "");
-        
-        // In a real app, we'd fetch the leaderboard data from an API
-        // Here we'll use mock data and add the current user if they're not already included
-        
-        // First, check if the current user is already in our mock data
-        const userExists = MOCK_USERS.some(u => u.username === user.username);
-        
-        // If not, and they have points, add them to the mock data
-        let allUsers = [...MOCK_USERS];
-        if (!userExists && user.points) {
-          allUsers.push({
-            username: user.username,
-            points: user.points
-          });
-        }
-        
-        // Sort by points (descending)
-        const sortedLeaderboard = allUsers.sort((a, b) => b.points - a.points);
-        
-        // Add rank to each user
-        const rankedLeaderboard = sortedLeaderboard.map((user, index) => ({
-          ...user,
-          rank: index + 1
-        }));
-        
-        setLeaderboard(rankedLeaderboard);
       } catch (e) {
         console.error("Error parsing user data", e);
-        setLeaderboard(MOCK_USERS.map((user, index) => ({ ...user, rank: index + 1 })));
       }
-    } else {
-      // If no user is logged in, just show the mock leaderboard
-      setLeaderboard(MOCK_USERS.map((user, index) => ({ ...user, rank: index + 1 })));
     }
     
-    setIsLoading(false);
+    // Fetch leaderboard data from API
+    const fetchLeaderboard = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        const response = await fetch('/api/leaderboard');
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch leaderboard: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // If current user is not in the leaderboard but has points, add them
+        if (userData) {
+          try {
+            const user = JSON.parse(userData);
+            const userExists = data.some((entry: LeaderboardEntry) => 
+              entry.username === user.username
+            );
+            
+            if (!userExists && user.points) {
+              // Add the user to the list (will be sorted later)
+              data.push({
+                username: user.username,
+                points: user.points
+              });
+              
+              // Resort and rerank
+              data.sort((a: LeaderboardEntry, b: LeaderboardEntry) => b.points - a.points);
+              data.forEach((entry: LeaderboardEntry, index: number) => {
+                entry.rank = index + 1;
+              });
+            }
+          } catch (e) {
+            console.error("Error processing user data for leaderboard", e);
+          }
+        }
+        
+        setLeaderboard(data);
+      } catch (err) {
+        console.error("Error fetching leaderboard:", err);
+        setError("Failed to load leaderboard data. Please try again later.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchLeaderboard();
   }, []);
 
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded">
+        <p className="text-red-700">{error}</p>
+        <button 
+          onClick={() => window.location.reload()}
+          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -111,7 +137,7 @@ export default function LeaderboardPage() {
                   }`}
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {user.rank <= 3 ? (
+                    {user.rank! <= 3 ? (
                       <span className={`
                         inline-flex items-center justify-center w-8 h-8 rounded-full text-white font-bold
                         ${user.rank === 1 ? 'bg-yellow-400' : user.rank === 2 ? 'bg-gray-400' : 'bg-amber-600'}

@@ -140,11 +140,53 @@ const PLAYERS_BY_CATEGORY = {
 };
 
 export default function SelectTeamPage() {
-  const { team, remainingBudget, addPlayer } = useTeam();
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const { team, addPlayer, remainingBudget } = useTeam();
+  const [allPlayers, setAllPlayers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   
+  useEffect(() => {
+    const fetchPlayers = async () => {
+      try {
+        setIsLoading(true);
+        setError("");
+        
+        // Get auth token from localStorage for authenticated requests
+        const userData = localStorage.getItem("user");
+        let authHeader = '';
+        if (userData) {
+          const user = JSON.parse(userData);
+          authHeader = `Bearer ${user.username}`; // Use proper token in production
+        }
+        
+        const response = await fetch('/api/players', {
+          headers: {
+            'Authorization': authHeader
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch players: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        setAllPlayers(data);
+      } catch (err) {
+        console.error("Error fetching players:", err);
+        setError("Failed to load players. Using demo data instead.");
+        // Fallback to mock data
+        setAllPlayers(MOCK_PLAYERS);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchPlayers();
+  }, []);
+
   // Show notification and auto-hide after 3 seconds
   const showNotification = (message: string, type: 'success' | 'error') => {
     setNotification({ message, type });
@@ -183,8 +225,10 @@ export default function SelectTeamPage() {
     }
   };
 
+  // Ensure players array is defined before filtering
+  const safePlayers = allPlayers || [];
   const filteredPlayers = selectedCategory 
-    ? PLAYERS_BY_CATEGORY[selectedCategory as keyof typeof PLAYERS_BY_CATEGORY].filter(player => 
+    ? safePlayers.filter(player => 
         player.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         player.university.toLowerCase().includes(searchTerm.toLowerCase())
       )

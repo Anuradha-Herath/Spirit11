@@ -15,11 +15,71 @@ export default function BudgetPage() {
   const [spentPercentage, setSpentPercentage] = useState(0);
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
   const [animateUpdate, setAnimateUpdate] = useState(false);
+  const [playerCosts, setPlayerCosts] = useState<Record<string, number>>({});
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // Calculate percentage of budget spent
     setSpentPercentage((spentBudget / INITIAL_BUDGET_LKR) * 100);
-  }, [spentBudget]);
+    
+    // Get player costs from API or calculate
+    const fetchPlayerValues = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Try to get current player market values from API
+        // This is optional - we can just use the values from the team context
+        if (team.length > 0) {
+          const playerIds = team.map(player => player.id);
+          const userData = localStorage.getItem("user");
+          let authHeader = '';
+          if (userData) {
+            const user = JSON.parse(userData);
+            authHeader = `Bearer ${user.username}`;
+          }
+          
+          try {
+            const response = await fetch('/api/players/values', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': authHeader
+              },
+              body: JSON.stringify({ playerIds })
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              setPlayerCosts(data.values);
+            } else {
+              // Fallback to calculating from team data
+              const costs = team.reduce((acc, player) => {
+                acc[player.id] = player.budgetLkr || player.budget * 100000000;
+                return acc;
+              }, {} as Record<string, number>);
+              
+              setPlayerCosts(costs);
+            }
+          } catch (error) {
+            // Fallback to calculating from team data
+            const costs = team.reduce((acc, player) => {
+              acc[player.id] = player.budgetLkr || player.budget * 100000000;
+              return acc;
+            }, {} as Record<string, number>);
+            
+            setPlayerCosts(costs);
+          }
+        }
+        
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error fetching player values:', error);
+        setIsLoading(false);
+      }
+    };
+    
+    fetchPlayerValues();
+  }, [team, spentBudget]);
 
   // Subscribe to budget update events
   useEffect(() => {

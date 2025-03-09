@@ -2,8 +2,11 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { Player } from "@/types/player";
 
-// Mock player data - replace with actual API call
+const roles = ['Batsman', 'Bowler', 'All-rounder', 'Wicket Keeper']
+
+// Keep mock data as fallback only
 const MOCK_PLAYERS = [
   {
     id: "1",
@@ -74,17 +77,46 @@ const MOCK_PLAYERS = [
 ];
 
 export default function PlayersPage() {
-  const [players, setPlayers] = useState(MOCK_PLAYERS);
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [filter, setFilter] = useState("All");
+  const [filterRole, setFilterRole] = useState("All");
 
-  const roles = ["All", "Batsman", "Bowler", "All-rounder", "Wicket Keeper"];
+  useEffect(() => {
+    const fetchPlayers = async () => {
+      try {
+        setIsLoading(true);
+        setError("");
 
-  // Filter players based on search term and role filter
+        const response = await fetch('/api/players');
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch players: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        setPlayers(data);
+      } catch (err) {
+        console.error("Error fetching players:", err);
+        setError("Failed to load players. Using demo data instead.");
+        // Fallback to mock data
+        setPlayers(MOCK_PLAYERS);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPlayers();
+  }, []);
+
+  // Filter players based on search term and role
   const filteredPlayers = players.filter(player => {
-    const matchesSearch = player.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          player.university.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = filter === "All" || player.role === filter;
+    const matchesSearch = 
+      player.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      player.university.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesFilter = filterRole === "All" || player.role === filterRole;
     
     return matchesSearch && matchesFilter;
   });
@@ -108,9 +140,9 @@ export default function PlayersPage() {
           {roles.map(role => (
             <button
               key={role}
-              onClick={() => setFilter(role)}
+              onClick={() => setFilterRole(role)}
               className={`px-4 py-2 rounded-md whitespace-nowrap ${
-                filter === role
+                filterRole === role
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}

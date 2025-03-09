@@ -3,9 +3,10 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { Player } from "@/types/player";
 
-// Mock player data - replace with actual API call
-const MOCK_PLAYERS_DETAILS = {
+// Keep mock data as fallback only
+const MOCK_PLAYER_DETAILS = {
   "1": {
     id: "1",
     name: "Kasun Perera",
@@ -130,34 +131,52 @@ const MOCK_PLAYERS_DETAILS = {
   }
 };
 
-export default function PlayerDetails() {
+export default function PlayerDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const [player, setPlayer] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [player, setPlayer] = useState<Player | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    // Get player ID from URL params
     const playerId = params.id as string;
+    
+    const fetchPlayerDetails = async () => {
+      try {
+        setIsLoading(true);
+        setError("");
 
-    // Simulating API call with mock data
-    setTimeout(() => {
-      if (MOCK_PLAYERS_DETAILS[playerId]) {
-        setPlayer(MOCK_PLAYERS_DETAILS[playerId]);
-        setLoading(false);
-      } else {
-        setError("Player not found");
-        setLoading(false);
+        const response = await fetch(`/api/players/${playerId}`);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch player details: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        setPlayer(data);
+      } catch (err) {
+        console.error("Error fetching player details:", err);
+        setError("Failed to load player details. Using demo data instead.");
+        
+        // Fallback to mock data if available for this ID
+        if (MOCK_PLAYER_DETAILS[playerId as keyof typeof MOCK_PLAYER_DETAILS]) {
+          setPlayer(MOCK_PLAYER_DETAILS[playerId as keyof typeof MOCK_PLAYER_DETAILS]);
+        } else {
+          setError("Player not found");
+        }
+      } finally {
+        setIsLoading(false);
       }
-    }, 500);
+    };
+
+    fetchPlayerDetails();
   }, [params.id]);
 
   const handleBackClick = () => {
     router.back();
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>

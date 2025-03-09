@@ -15,12 +15,61 @@ export default function TeamPage() {
   const [totalPoints, setTotalPoints] = useState<number | null>(null);
   const router = useRouter();
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // Calculate total points when team is complete (11 players)
   useEffect(() => {
     if (team.length === 11) {
+      setIsUpdating(true);
+      
+      // Calculate points for each player
       const points = calculatePoints();
       setTotalPoints(points);
+      
+      // Get auth token
+      const userData = localStorage.getItem("user");
+      if (userData) {
+        try {
+          const user = JSON.parse(userData);
+          const authHeader = `Bearer ${user.username}`;
+          
+          // Update leaderboard with new points
+          fetch('/api/leaderboard/update', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': authHeader
+            },
+            body: JSON.stringify({
+              username: user.username,
+              points: points
+            })
+          })
+          .then(response => {
+            if (!response.ok) {
+              throw new Error('Failed to update leaderboard');
+            }
+            return response.json();
+          })
+          .then(data => {
+            console.log('Leaderboard updated:', data);
+            // Store points in localStorage
+            user.points = points;
+            localStorage.setItem("user", JSON.stringify(user));
+          })
+          .catch(error => {
+            console.error('Error updating leaderboard:', error);
+          })
+          .finally(() => {
+            setIsUpdating(false);
+          });
+        } catch (e) {
+          console.error("Error updating user points", e);
+          setIsUpdating(false);
+        }
+      } else {
+        setIsUpdating(false);
+      }
     } else {
       setTotalPoints(null);
     }
@@ -89,7 +138,7 @@ export default function TeamPage() {
               <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
                 {totalPoints !== null && (
                   <div className="bg-yellow-400 text-blue-900 px-4 py-2 rounded-md font-bold">
-                    Total Points: {totalPoints}
+                    {isUpdating ? 'Calculating...' : `Total Points: ${totalPoints}`}
                   </div>
                 )}
                 <div className="bg-green-500 text-white px-4 py-2 rounded-md">
@@ -124,35 +173,28 @@ export default function TeamPage() {
                     {role.charAt(0).toUpperCase() + role.slice(1).replace('-', ' ')}s ({playersByRole[role].length})
                   </h3>
                   <div className="grid gap-3">
-                    {playersByRole[role].map((player) => {
-                      const playerBudgetLkr = player.budgetLkr || player.budget * 100000000;
-                      return (
-                        <div key={player.id} className="bg-gray-50 rounded-md p-3 flex flex-col sm:flex-row justify-between">
-                          <div className="flex items-center">
-                            <div className="w-12 h-12 bg-gray-200 rounded-full mr-3 overflow-hidden">
-                              <img 
-                                src={player.image} 
-                                alt={player.name}
-                                className="w-full h-full object-cover" 
-                              />
-                            </div>
-                            <div>
-                              <h4 className="font-medium">{player.name}</h4>
-                              <p className="text-gray-600 text-sm">{player.university}</p>
-                            </div>
+                    {playersByRole[role].map(player => (
+                      <div key={player.id} className="bg-gray-50 p-3 rounded-lg border border-gray-200 flex justify-between items-center">
+                        <div className="flex items-center">
+                          <div className="h-12 w-12 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
+                            <img src={player.image} alt={player.name} className="h-full w-full object-cover" />
                           </div>
-                          <div className="flex items-center mt-3 sm:mt-0 justify-between sm:justify-end w-full sm:w-auto">
-                            <span className="text-green-600 font-medium mr-4">Rs. {formatNumber(playerBudgetLkr)}</span>
-                            <button
-                              onClick={() => handleRemovePlayer(player.id)}
-                              className="text-red-500 hover:text-red-700 text-sm font-medium"
-                            >
-                              Remove
-                            </button>
+                          <div className="ml-3">
+                            <div className="font-medium">{player.name}</div>
+                            <div className="text-sm text-gray-500">{player.university}</div>
                           </div>
                         </div>
-                      );
-                    })}
+                        <div className="flex items-center gap-4">
+                          <div className="text-sm font-medium text-green-600">Rs. {formatNumber(player.budgetLkr || player.budget * 100000000)}</div>
+                          <button 
+                            onClick={() => handleRemovePlayer(player.id)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
@@ -160,21 +202,21 @@ export default function TeamPage() {
               {/* Team completion actions */}
               <div className="mt-8 flex flex-col sm:flex-row justify-between items-center">
                 <div>
-                  {team.length < 11 ? (
-                    <p className="text-orange-600 mb-2 sm:mb-0">
-                      Your team needs {11 - team.length} more player(s) to be complete.
-                    </p>
+                  {team.length === 11 ? (
+                    <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                      Team Complete!
+                    </span>
                   ) : (
-                    <p className="text-green-600 font-medium mb-2 sm:mb-0">
-                      Your team is complete! Total points: {totalPoints}
-                    </p>
+                    <span className="text-gray-500">
+                      {11 - team.length} more player{11 - team.length !== 1 ? 's' : ''} needed
+                    </span>
                   )}
                 </div>
                 <button
                   onClick={handleAddMorePlayers}
-                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full sm:w-auto"
+                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full sm:w-auto mt-4 sm:mt-0"
                 >
-                  {team.length < 11 ? "Add More Players" : "Edit Team"}
+                  {team.length > 0 ? "Add More Players" : "Select Players"}
                 </button>
               </div>
 
