@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Additional global styles can be added below */
+body {
+  @apply bg-gray-50;
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px) rotate(45deg);
+  }
+
+  50% {
+    transform: translateY(-20px) rotate(45deg);
+  }
+
+  100% {
+    transform: translateY(0px) rotate(45deg);
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
