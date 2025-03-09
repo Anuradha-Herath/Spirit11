@@ -18,10 +18,17 @@ export default function AdminLayout({
   const [username, setUsername] = useState("");
   const router = useRouter();
   const pathname = usePathname();
+  const isLoginPage = pathname === "/admin/login";
 
   useEffect(() => {
     // Check if the current user has admin rights
     const checkAdminStatus = () => {
+      // Skip admin check on login page
+      if (isLoginPage) {
+        setIsLoading(false);
+        return;
+      }
+
       const user = localStorage.getItem("user");
       if (!user) {
         // Redirect to login page with return URL
@@ -50,7 +57,7 @@ export default function AdminLayout({
     };
     
     checkAdminStatus();
-  }, [router, pathname]);
+  }, [router, pathname, isLoginPage]);
 
   const handleLogout = () => {
     localStorage.removeItem("user");
@@ -65,108 +72,113 @@ export default function AdminLayout({
     );
   }
 
-  if (!isAdmin) {
+  if (!isAdmin && !isLoginPage) {
     return null; // Will redirect in the useEffect
   }
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <nav className="bg-gradient-to-r from-purple-700 to-indigo-800 shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <h1 className="text-white text-2xl font-bold tracking-tight">
-                  Spirit<span className="text-yellow-400">II</span>
-                  <span className="ml-2 text-sm bg-yellow-400 text-purple-900 px-2 py-0.5 rounded-md">ADMIN</span>
-                </h1>
-              </div>
-              <div className="hidden md:block">
-                <div className="ml-10 flex items-baseline space-x-4">
+      {/* Only show navbar when not on login page */}
+      {!isLoginPage && (
+        <>
+          <nav className="bg-gradient-to-r from-purple-700 to-indigo-800 shadow-lg">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex items-center justify-between h-16">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <h1 className="text-white text-2xl font-bold tracking-tight">
+                      Spirit<span className="text-yellow-400">II</span>
+                      <span className="ml-2 text-sm bg-yellow-400 text-purple-900 px-2 py-0.5 rounded-md">ADMIN</span>
+                    </h1>
+                  </div>
+                  <div className="hidden md:block">
+                    <div className="ml-10 flex items-baseline space-x-4">
+                      <Link 
+                        href="/admin/players" 
+                        className={`px-3 py-2 rounded-md text-sm font-medium ${
+                          pathname === "/admin/players" || pathname === "/admin" ? "bg-indigo-900 text-white" : "text-white hover:bg-indigo-800"
+                        }`}
+                      >
+                        Players
+                      </Link>
+                      <Link 
+                        href="/admin/tournament" 
+                        className={`px-3 py-2 rounded-md text-sm font-medium ${
+                          pathname === "/admin/tournament" ? "bg-indigo-900 text-white" : "text-white hover:bg-indigo-800"
+                        }`}
+                      >
+                        Tournament Summary
+                      </Link>
+                      <Link 
+                        href="/admin/test-updates" 
+                        className={`px-3 py-2 rounded-md text-sm font-medium ${
+                          pathname === "/admin/test-updates" ? "bg-indigo-900 text-white" : "text-white hover:bg-indigo-800"
+                        }`}
+                      >
+                        Test Updates
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-4">
+                  <div className="text-white">
+                    <span className="text-sm text-yellow-200">Admin:</span> {username}
+                  </div>
                   <Link 
-                    href="/admin/players" 
-                    className={`px-3 py-2 rounded-md text-sm font-medium ${
-                      pathname === "/admin/players" || pathname === "/admin" ? "bg-indigo-900 text-white" : "text-white hover:bg-indigo-800"
-                    }`}
+                    href="/dashboard"
+                    className="text-white hover:text-yellow-400 text-sm"
                   >
-                    Players
+                    User Dashboard
                   </Link>
-                  <Link 
-                    href="/admin/tournament" 
-                    className={`px-3 py-2 rounded-md text-sm font-medium ${
-                      pathname === "/admin/tournament" ? "bg-indigo-900 text-white" : "text-white hover:bg-indigo-800"
-                    }`}
+                  <button 
+                    onClick={handleLogout}
+                    className="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700"
                   >
-                    Tournament Summary
-                  </Link>
-                  <Link 
-                    href="/admin/test-updates" 
-                    className={`px-3 py-2 rounded-md text-sm font-medium ${
-                      pathname === "/admin/test-updates" ? "bg-indigo-900 text-white" : "text-white hover:bg-indigo-800"
-                    }`}
-                  >
-                    Test Updates
-                  </Link>
+                    Logout
+                  </button>
                 </div>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-white">
-                <span className="text-sm text-yellow-200">Admin:</span> {username}
-              </div>
+          </nav>
+
+          {/* Mobile menu for smaller screens */}
+          <div className="md:hidden bg-indigo-700 p-2">
+            <div className="flex space-x-4 justify-center">
               <Link 
-                href="/dashboard"
-                className="text-white hover:text-yellow-400 text-sm"
+                href="/admin/players" 
+                className={`px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap ${
+                  pathname === "/admin/players" || pathname === "/admin" ? "bg-indigo-900 text-white" : "text-white hover:bg-indigo-800"
+                }`}
               >
-                User Dashboard
+                Players
               </Link>
-              <button 
-                onClick={handleLogout}
-                className="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700"
+              <Link 
+                href="/admin/tournament" 
+                className={`px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap ${
+                  pathname === "/admin/tournament" ? "bg-indigo-900 text-white" : "text-white hover:bg-indigo-800"
+                }`}
               >
-                Logout
-              </button>
+                Tournament Summary
+              </Link>
+              <Link 
+                href="/admin/test-updates" 
+                className={`px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap ${
+                  pathname === "/admin/test-updates" ? "bg-indigo-900 text-white" : "text-white hover:bg-indigo-800"
+                }`}
+              >
+                Test Updates
+              </Link>
             </div>
           </div>
-        </div>
-      </nav>
-
-      {/* Mobile menu for smaller screens */}
-      <div className="md:hidden bg-indigo-700 p-2">
-        <div className="flex space-x-4 justify-center">
-          <Link 
-            href="/admin/players" 
-            className={`px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap ${
-              pathname === "/admin/players" || pathname === "/admin" ? "bg-indigo-900 text-white" : "text-white hover:bg-indigo-800"
-            }`}
-          >
-            Players
-          </Link>
-          <Link 
-            href="/admin/tournament" 
-            className={`px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap ${
-              pathname === "/admin/tournament" ? "bg-indigo-900 text-white" : "text-white hover:bg-indigo-800"
-            }`}
-          >
-            Tournament Summary
-          </Link>
-          <Link 
-            href="/admin/test-updates" 
-            className={`px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap ${
-              pathname === "/admin/test-updates" ? "bg-indigo-900 text-white" : "text-white hover:bg-indigo-800"
-            }`}
-          >
-            Test Updates
-          </Link>
-        </div>
-      </div>
+        </>
+      )}
 
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         {children}
       </main>
       
       {/* Real-time notification component */}
-      <AdminNotification />
+      {!isLoginPage && <AdminNotification />}
     </div>
   );
 }

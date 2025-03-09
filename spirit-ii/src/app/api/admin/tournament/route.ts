@@ -49,7 +49,7 @@ export async function GET(req: Request) {
       };
       
       await collection.insertOne(defaultStats);
-      tournamentStats = defaultStats;
+      tournamentStats = defaultStats as any;
     }
     
     return NextResponse.json(tournamentStats);
