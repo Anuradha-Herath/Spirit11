@@ -50,6 +50,37 @@ SpiritII is a fantasy cricket platform designed to provide an engaging experienc
    npm run dev
    ```
 
+## Setup Instructions
+
+1. Clone the repository
+2. Install dependencies:
+```bash
+npm install
+# or
+yarn install
+```
+
+3. Create a `.env.local` file with the following contents:
+```bash
+NEXT_RUNTIME_STRICT_MODE=false
+# Add your MongoDB connection string here
+MONGODB_URI=your_mongodb_connection_string
+```
+
+4. Run the development server:
+```bash
+npm run dev
+# or
+yarn dev
+```
+
+5. Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.
+
+## Known Issues
+
+- If you encounter warnings about `useLayoutEffect` during server-side rendering, they are handled by our custom `useIsomorphicLayoutEffect` hook and can be safely ignored.
+- For any other issues, please check the project documentation or open an issue on the repository.
+
 ## Contributing
 Contributions are welcome! Please open an issue or submit a pull request for any enhancements or bug fixes.
 
